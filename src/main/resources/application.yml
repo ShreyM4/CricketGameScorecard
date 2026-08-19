@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cricket-scorecard
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/cricket_db

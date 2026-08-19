@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Scorecard Engine API - Dashboard & API Inspector</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: rgba(21, 30, 49, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary-emerald: #10b981;
+            --primary-emerald-glow: rgba(16, 185, 129, 0.3);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --postman-orange: #ff6c37;
+            --font-main: 'Outfit', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Header */
+        header {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-emerald), var(--accent-blue));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 15px var(--primary-emerald-glow);
+        }
+
+        .logo-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--primary-emerald);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary-emerald);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary-emerald);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Main Container Layout */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            flex: 1;
+            max-width: 1700px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 1200px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card Component */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Main Scoreboard Display */
+        .scoreboard-hero {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.15));
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scoreboard-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .match-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .teams-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .match-badge {
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--primary-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .badge-completed {
+            background: rgba(244, 63, 94, 0.2);
+            color: var(--accent-rose);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+        }
+
+        .score-main {
+            display: flex;
+            align-items: baseline;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .big-runs {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(to right, #ffffff, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: var(--font-main);
+        }
+
+        .big-overs {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .batsmen-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 14px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .batsman-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .batsman-box.striker {
+            border-left: 3px solid var(--primary-emerald);
+            padding-left: 8px;
+        }
+
+        .batsman-info h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .batsman-info p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Delivery Buttons Deck */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .btn-ball {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-ball span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .btn-ball:hover {
+            transform: translateY(-2px);
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-ball.four {
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .btn-ball.six {
+            border-color: rgba(16, 185, 129, 0.5);
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--primary-emerald);
+        }
+
+        .btn-ball.wicket {
+            border-color: rgba(244, 63, 94, 0.5);
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-rose);
+        }
+
+        .btn-ball.extra {
+            border-color: rgba(245, 158, 11, 0.5);
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+        }
+
+        /* Recent Balls Timeline */
+        .recent-balls-timeline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 8px 0;
+            margin-top: 1rem;
+        }
+
+        .ball-badge {
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--card-border);
+        }
+
+        .ball-badge.boundary-4 {
+            background: rgba(59, 130, 246, 0.25);
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .ball-badge.boundary-6 {
+            background: rgba(16, 185, 129, 0.25);
+            color: var(--primary-emerald);
+            border-color: var(--primary-emerald);
+        }
+
+        .ball-badge.w {
+            background: rgba(244, 63, 94, 0.3);
+            color: var(--accent-rose);
+            border-color: var(--accent-rose);
+        }
+
+        .ball-badge.ext {
+            background: rgba(245, 158, 11, 0.25);
+            color: var(--accent-amber);
+            border-color: var(--accent-amber);
+        }
+
+        /* Form Inputs */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary-emerald), #059669);
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px var(--primary-emerald-glow);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* Postman Side Panel */
+        .postman-panel {
+            background: #0f172a;
+            border: 1px solid rgba(255, 108, 55, 0.3);
+            border-radius: 20px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            height: fit-content;
+        }
+
+        .postman-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .postman-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--postman-orange);
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .api-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: var(--font-code);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chip:hover {
+            background: rgba(255, 108, 55, 0.15);
+            border-color: var(--postman-orange);
+            color: var(--postman-orange);
+        }
+
+        /* Postman HTTP Request Bar */
+        .http-bar {
+            display: flex;
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+        }
+
+        .method-tag {
+            padding: 8px 12px;
+            font-family: var(--font-code);
+            font-weight: 700;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .method-post { background: rgba(16, 185, 129, 0.25); color: var(--primary-emerald); }
+        .method-get { background: rgba(59, 130, 246, 0.25); color: var(--accent-blue); }
+
+        .url-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px 12px;
+            color: #cbd5e1;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        /* Response Viewer Box */
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .status-pill {
+            font-family: var(--font-code);
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .status-200 { background: rgba(16, 185, 129, 0.2); color: var(--primary-emerald); }
+        .status-400 { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); }
+
+        .code-viewer {
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 1rem;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            max-height: 420px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Tabs styling */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-main);
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-group">
+            <div class="logo-icon">🏏</div>
+            <div class="logo-text">
+                <h1>Cricket Scorecard Engine</h1>
+                <p>Spring Boot 3.3.2 + MongoDB REST API</p>
+            </div>
+        </div>
+        <div class="server-status" id="serverStatus">
+            <div class="status-dot"></div>
+            <span>Connected (localhost:8080)</span>
+        </div>
+    </header>
+
+    <!-- App Main Layout -->
+    <div class="app-layout">
+        
+        <!-- Left Main Panel -->
+        <div class="main-content">
+            
+            <!-- Live Scorecard Hero Card -->
+            <div class="scoreboard-hero">
+                <div class="match-meta">
+                    <div class="teams-title" id="teamsDisplay">IND vs AUS</div>
+                    <div class="match-badge badge-live" id="matchStatusBadge">LIVE</div>
+                </div>
+                
+                <div class="score-main">
+                    <div class="big-runs" id="totalRunsWickets">0 / 0</div>
+                    <div class="big-overs" id="oversDisplay">(0.0 / 20.0 Overs)</div>
+                </div>
+
+                <div class="batsmen-strip">
+                    <div class="batsman-box striker">
+                        <div style="font-size: 1.5rem;">🏏</div>
+                        <div class="batsman-info">
+                            <h4 id="strikerNameDisplay">Striker: Player 1</h4>
+                            <p id="strikerIdDisplay">ID: p1</p>
+                        </div>
+                    </div>
+                    <div class="batsman-box">
+                        <div style="font-size: 1.5rem;">🚶</div>
+                        <div class="batsman-info">
+                            <h4 id="nonStrikerNameDisplay">Non-Striker: Player 2</h4>
+                            <p id="nonStrikerIdDisplay">ID: p2</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Balls Badges -->
+                <div style="margin-top: 1rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Recent Deliveries:</span>
+                    <div class="recent-balls-timeline" id="recentBallsTimeline">
+                        <div class="ball-badge">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Controls Card -->
+            <div class="card">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('deliveries')">⚡ Live Deliveries</button>
+                    <button class="tab-btn" onclick="switchTab('createMatch')">🏏 Start Match</button>
+                    <button class="tab-btn" onclick="switchTab('createPlayer')">👤 Create Player</button>
+                </div>
+
+                <!-- Tab 1: Live Ball Controls -->
+                <div class="tab-content active" id="tab-deliveries">
+                    <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                        Click a button to record a delivery event (Triggers <code>POST /api/matches/{id}/ball</code>):
+                    </div>
+                    <div class="controls-grid">
+                        <button class="btn-ball" onclick="sendBall(0, false, false)">0 <span>Dot Ball</span></button>
+                        <button class="btn-ball" onclick="sendBall(1, false, false)">1 <span>Single (Swap)</span></button>
+                        <button class="btn-ball" onclick="sendBall(2, false, false)">2 <span>Two Runs</span></button>
+                        <button class="btn-ball" onclick="sendBall(3, false, false)">3 <span>Three (Swap)</span></button>
+                        <button class="btn-ball four" onclick="sendBall(4, false, false)">4 <span>FOUR 💥</span></button>
+                        <button class="btn-ball six" onclick="sendBall(6, false, false)">6 <span>SIX 🚀</span></button>
+                        <button class="btn-ball wicket" onclick="sendBall(0, true, false)">🔴 Wicket <span>OUT!</span></button>
+                        <button class="btn-ball extra" onclick="sendBall(0, false, true)">⚡ Wide <span>+1 Extra</span></button>
+                        <button class="btn-ball extra" onclick="sendBall(1, false, true)">⚡ No Ball <span>+1 Extra</span></button>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Start Match -->
+                <div class="tab-content" id="tab-createMatch">
+                    <div class="form-group">
+                        <label>Batting Team</label>
+                        <input type="text" id="battingTeamInput" class="form-control" value="IND">
+                    </div>
+                    <div class="form-group">
+                        <label>Bowling Team</label>
+                        <input type="text" id="bowlingTeamInput" class="form-control" value="AUS">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Overs</label>
+                        <input type="number" id="totalOversInput" class="form-control" value="20" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Striker Player ID (Optional)</label>
+                        <input type="text" id="strikerIdInput" class="form-control" placeholder="e.g. p1">
+                    </div>
+                    <div class="form-group">
+                        <label>Non-Striker Player ID (Optional)</label>
+                        <input type="text" id="nonStrikerIdInput" class="form-control" placeholder="e.g. p2">
+                    </div>
+                    <button class="btn-primary" onclick="createMatch()">🚀 Launch New Match</button>
+                </div>
+
+                <!-- Tab 3: Create Player -->
+                <div class="tab-content" id="tab-createPlayer">
+                    <div class="form-group">
+                        <label>Player Full Name</label>
+                        <input type="text" id="playerNameInput" class="form-control" placeholder="e.g. Virat Kohli">
+                    </div>
+                    <div class="form-group">
+                        <label>Player Role</label>
+                        <select id="playerRoleInput" class="form-control">
+                            <option value="BATSMAN">BATSMAN</option>
+                            <option value="BOWLER">BOWLER</option>
+                            <option value="ALL_ROUNDER">ALL_ROUNDER</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="createPlayer()">👤 Register Player</button>
+
+                    <div style="margin-top: 1.5rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Registered Players:</span>
+                        <div id="playersList" style="margin-top: 8px; font-size: 0.85rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Panel: Postman API Showcase -->
+        <div class="postman-panel">
+            <div class="postman-header">
+                <div class="postman-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    API Inspector
+                </div>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Real-Time Console</span>
+            </div>
+
+            <!-- Preset Chips -->
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">1-Click Endpoint Preset:</span>
+                <div class="api-chips">
+                    <div class="chip" onclick="presetPostPlayer()">POST /api/players</div>
+                    <div class="chip" onclick="presetPostMatch()">POST /api/matches</div>
+                    <div class="chip" onclick="presetPostBall()">POST /api/matches/{id}/ball</div>
+                    <div class="chip" onclick="presetGetMatch()">GET /api/matches/{id}</div>
+                </div>
+            </div>
+
+            <!-- HTTP Request Bar -->
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Request Line:</div>
+                <div class="http-bar">
+                    <div class="method-tag method-post" id="inspectorMethod">POST</div>
+                    <input type="text" class="url-input" id="inspectorUrl" readonly value="/api/matches">
+                </div>
+            </div>
+
+            <!-- Request Body Box -->
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Request Payload (JSON):</div>
+                <div class="code-viewer" id="inspectorReqBody" style="max-height: 100px;">{}</div>
+            </div>
+
+            <!-- Response Header & Viewer -->
+            <div>
+                <div class="response-header">
+                    <span>Response Payload:</span>
+                    <div>
+                        <span id="responseTime" style="margin-right: 8px;">0 ms</span>
+                        <span class="status-pill status-200" id="inspectorStatus">200 OK</span>
+                    </div>
+                </div>
+                <div class="code-viewer" id="inspectorResponseBody">
+// Response JSON will appear here after API call...
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        const API_BASE = 'http://localhost:8080';
+        let currentMatchId = null;
+        let currentMatchData = null;
+
+        // Auto-create an initial match on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await autoInitMatch();
+            await fetchPlayers();
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        // Auto initialization
+        async function autoInitMatch() {
+            try {
+                const reqBody = {
+                    battingTeam: "IND",
+                    bowlingTeam: "AUS",
+                    totalOvers: 20,
+                    strikerId: "Virat Kohli",
+                    nonStrikerId: "Rohit Sharma"
+                };
+
+                const res = await callApi('POST', '/api/matches', reqBody);
+                if (res && res.id) {
+                    currentMatchId = res.id;
+                    updateScorecardUI(res);
+                }
+            } catch (err) {
+                console.error("Auto init match failed:", err);
+            }
+        }
+
+        // API Call Wrapper with Postman Inspector integration
+        async function callApi(method, path, body = null) {
+            const startTime = performance.now();
+            const fullUrl = API_BASE + path;
+
+            // Update Postman Inspector Request State
+            document.getElementById('inspectorMethod').innerText = method;
+            document.getElementById('inspectorMethod').className = 'method-tag ' + (method === 'POST' ? 'method-post' : 'method-get');
+            document.getElementById('inspectorUrl').value = path;
+            document.getElementById('inspectorReqBody').innerText = body ? JSON.stringify(body, null, 2) : '// No Request Body';
+
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (body) options.body = JSON.stringify(body);
+
+                const response = await fetch(fullUrl, options);
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+
+                const data = await response.json();
+
+                // Update Inspector Response State
+                document.getElementById('responseTime').innerText = `${duration} ms`;
+                const statusEl = document.getElementById('inspectorStatus');
+                statusEl.innerText = `${response.status} ${response.statusText || (response.ok ? 'OK' : 'ERROR')}`;
+                statusEl.className = 'status-pill ' + (response.ok ? 'status-200' : 'status-400');
+                
+                document.getElementById('inspectorResponseBody').innerText = JSON.stringify(data, null, 2);
+
+                return data;
+            } catch (error) {
+                document.getElementById('inspectorStatus').innerText = '500 ERROR';
+                document.getElementById('inspectorStatus').className = 'status-pill status-400';
+                document.getElementById('inspectorResponseBody').innerText = JSON.stringify({ error: error.message }, null, 2);
+                throw error;
+            }
+        }
+
+        // Record Ball Event
+        async function sendBall(runs, isWicket, isExtra) {
+            if (!currentMatchId) {
+                alert("Please start a match first!");
+                return;
+            }
+
+            const payload = { runsScored: runs, isWicket: isWicket, isExtra: isExtra };
+            const updatedMatch = await callApi('POST', `/api/matches/${currentMatchId}/ball`, payload);
+            if (updatedMatch) {
+                updateScorecardUI(updatedMatch);
+            }
+        }
+
+        // Create Match Form
+        async function createMatch() {
+            const battingTeam = document.getElementById('battingTeamInput').value;
+            const bowlingTeam = document.getElementById('bowlingTeamInput').value;
+            const totalOvers = parseInt(document.getElementById('totalOversInput').value);
+            const strikerId = document.getElementById('strikerIdInput').value || 'Striker';
+            const nonStrikerId = document.getElementById('nonStrikerIdInput').value || 'NonStriker';
+
+            const payload = { battingTeam, bowlingTeam, totalOvers, strikerId, nonStrikerId };
+            const match = await callApi('POST', '/api/matches', payload);
+            if (match && match.id) {
+                currentMatchId = match.id;
+                updateScorecardUI(match);
+                alert("Match Created! ID: " + match.id);
+            }
+        }
+
+        // Create Player Form
+        async function createPlayer() {
+            const name = document.getElementById('playerNameInput').value;
+            const role = document.getElementById('playerRoleInput').value;
+
+            if (!name) {
+                alert("Please enter player name!");
+                return;
+            }
+
+            const payload = { name, role };
+            const player = await callApi('POST', '/api/players', payload);
+            if (player) {
+                document.getElementById('playerNameInput').value = '';
+                await fetchPlayers();
+            }
+        }
+
+        async function fetchPlayers() {
+            const players = await callApi('GET', '/api/players');
+            if (Array.isArray(players)) {
+                const listEl = document.getElementById('playersList');
+                listEl.innerHTML = players.map(p => 
+                    `<div style="padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 6px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                        <span><strong>${p.name}</strong> (${p.role})</span>
+                        <code style="color: var(--accent-blue);">${p.id}</code>
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // Update Scorecard UI Dashboard
+        function updateScorecardUI(match) {
+            currentMatchData = match;
+            document.getElementById('teamsDisplay').innerText = `${match.battingTeam} vs ${match.bowlingTeam}`;
+            document.getElementById('totalRunsWickets').innerText = `${match.totalRuns} / ${match.totalWickets}`;
+            document.getElementById('oversDisplay').innerText = `(${match.oversBowled} / ${match.totalOvers}.0 Overs)`;
+            
+            const badge = document.getElementById('matchStatusBadge');
+            badge.innerText = match.status;
+            badge.className = 'match-badge ' + (match.status === 'COMPLETED' ? 'badge-completed' : 'badge-live');
+
+            document.getElementById('strikerNameDisplay').innerText = `Striker: ${match.strikerId || 'P1'}`;
+            document.getElementById('nonStrikerNameDisplay').innerText = `Non-Striker: ${match.nonStrikerId || 'P2'}`;
+
+            // Render Recent Balls Badges
+            const timeline = document.getElementById('recentBallsTimeline');
+            if (match.recentBalls && match.recentBalls.length > 0) {
+                timeline.innerHTML = match.recentBalls.map(ball => {
+                    let cls = '';
+                    let label = ball.runsScored;
+                    if (ball.isWicket) { cls = 'w'; label = 'W'; }
+                    else if (ball.isExtra) { cls = 'ext'; label = 'Ex'; }
+                    else if (ball.runsScored === 4) { cls = 'boundary-4'; }
+                    else if (ball.runsScored === 6) { cls = 'boundary-6'; }
+                    return `<div class="ball-badge ${cls}">${label}</div>`;
+                }).join('');
+            } else {
+                timeline.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">No deliveries yet</span>';
+            }
+        }
+
+        // Presets for Postman Panel
+        function presetPostPlayer() {
+            callApi('POST', '/api/players', { name: "Hardik Pandya", role: "ALL_ROUNDER" });
+        }
+        function presetPostMatch() {
+            callApi('POST', '/api/matches', { battingTeam: "IND", bowlingTeam: "ENG", totalOvers: 20, strikerId: "p1", nonStrikerId: "p2" });
+        }
+        function presetPostBall() {
+            if (currentMatchId) {
+                callApi('POST', `/api/matches/${currentMatchId}/ball`, { runsScored: 4, isWicket: false, isExtra: false });
+            }
+        }
+        function presetGetMatch() {
+            if (currentMatchId) {
+                callApi('GET', `/api/matches/${currentMatchId}`);
+            }
+        }
+    </script>
+</body>
+</html>
